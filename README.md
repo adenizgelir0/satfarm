@@ -1,103 +1,118 @@
 # SATFARM
 
-SATFARM is a distributed SAT-solving system. Clients upload CNF files, the server creates shards, and workers solve them in parallel using Kissat. Workers return SAT results or DRAT-verified UNSAT proofs and earn credits. The system uses gRPC for scheduling and HTTP for file transfer.
-
----
-
-## Features
-
-- Upload CNF files via HTTP.
-- Workers download CNFs, run Kissat, and report results.
-- DRAT proof upload and verification for UNSAT.
-- Credit-based reward system for workers.
-- Simple gRPC scheduler for job assignment.
+SATFARM is a distributed SAT-solving system. Clients upload CNF files, the server creates shards, and workers solve them in parallel using Kissat. Workers return SAT results or DRAT-verified UNSAT proofs and earn credits.
 
 ---
 
 ## Run the Server
 
-docker compose up --build
+Start the server (HTTP + gRPC + PostgreSQL):
 
-Server endpoints:
+    docker compose up --build
 
-- HTTP: http://localhost:8080
-- gRPC: localhost:50051
+Server endpoints (used by workers):
+    HTTP endpoint:  http://YOUR_SERVER_HOST:8080
+    gRPC endpoint:  YOUR_SERVER_HOST:50051
 
-The server container includes:
-
-- drat-trim (used for verifying UNSAT proofs)
-- PostgreSQL client tools
-- Everything required to run the SATFARM core
-
-No host-level installation is required.
+The server container includes drat-trim for UNSAT proof checking.
 
 ---
 
-## Run a Worker (Docker image – recommended)
+## Run a Worker
 
-Build the worker image (this automatically compiles Kissat inside the container):
+Workers solve SAT shards provided by the server.
 
-docker build -t satfarm-worker -f Dockerfile.worker .
+To run a worker, you need the following information from the server operator:
 
-### If the server is running on the host machine
+- gRPC address
+- HTTP address
+- worker token
 
-docker run --rm --network host satfarm-worker \
-  -addr localhost:50051 \
-  -http http://localhost:8080 \
-  -token 23191ccdb291dc914483479e9d46259df20d4f50623dee3346eb4db09c740402 \
-  -name worker1
+Build the worker image:
 
-### If the server is running inside Docker Compose
+    docker build -t satfarm-worker -f Dockerfile.worker .
 
-The default service name is satfarm-server on the satfarm_default network:
+Run the worker (replace addresses and token):
 
-docker run --rm --network satfarm_default satfarm-worker \
-  -addr satfarm-server:50051 \
-  -http http://satfarm-server:8080 \
-  -token 23191ccdb291dc914483479e9d46259df20d4f50623dee3346eb4db09c740402 \
-  -name worker1
+    docker run --rm satfarm-worker \
+      -addr GRPC_ADDRESS_HERE \
+      -http HTTP_ADDRESS_HERE \
+      -token YOUR_WORKER_TOKEN \
+      -name worker1
 
-The -token flag is the worker’s API token issued by the server.
-The -name flag is just a display name.
+Example:
+
+    docker run --rm satfarm-worker \
+      -addr example.com:50051 \
+      -http http://example.com:8080 \
+      -token abc123 \
+      -name worker1
+
+No special Docker networking options are required. The worker only makes outbound connections.
 
 ---
 
-## Run a Worker (local, without Docker)
+## Run a Worker Locally (Optional)
 
-If you have Go and Kissat installed on your machine:
+If you prefer to run without Docker, install Go and Kissat, then:
 
-go run ./cmd/worker \
-  -addr localhost:50051 \
-  -http http://localhost:8080 \
-  -token 23191ccdb291dc914483479e9d46259df20d4f50623dee3346eb4db09c740402 \
-  -name worker1
-
-In this mode:
-
-- kissat must be on your PATH
-- drat-trim is not required locally — only the server verifies DRAT proofs
+    go run ./cmd/worker \
+      -addr GRPC_ADDRESS_HERE \
+      -http HTTP_ADDRESS_HERE \
+      -token YOUR_WORKER_TOKEN \
+      -name worker1
 
 ---
 
 ## Requirements
 
-### Server (Dockerized)
+Server:
+    - Docker + Docker Compose
+    - drat-trim (included in the server image)
 
-- Docker + Docker Compose
-- No external dependencies; the server image includes:
-  - drat-trim
-  - required runtime tools
-  - Go-built server binary
+Worker:
+    - Recommended: Docker worker image (includes Kissat)
+    - Optional local mode: Go 1.25+ and Kissat installed
 
-### Worker (choose one)
+---
 
-✔ Recommended: Docker Worker Image  
-Contains Kissat compiled from source; no host dependencies.
+# Developer Testing Notes (not required for third-party workers)
 
-Local Worker (no Docker):
+These notes are only for developers running both the server and the worker
+on the same machine. Third-party workers do NOT need these instructions.
 
-- Go 1.25+
-- Kissat installed on host
+## When testing locally with Docker
+
+Inside Docker containers, "localhost" refers to the container itself.
+To let a Docker worker connect to your local server, use one of the methods below.
+
+### Method 1 (recommended): Use your host machine's LAN IP
+
+Find your LAN IP (Linux):
+
+    ip a
+
+Use the address (e.g. 192.168.x.x) when running the worker:
+
+    docker run --rm satfarm-worker \
+      -addr 192.168.x.x:50051 \
+      -http http://192.168.x.x:8080 \
+      -token TOKEN \
+      -name worker1
+
+This works on Linux, Mac, and Windows.
+
+### Method 2 (Linux only): Use host networking
+
+If you prefer to use "localhost" as the server address:
+
+    docker run --rm --network host satfarm-worker \
+      -addr localhost:50051 \
+      -http http://localhost:8080 \
+      -token TOKEN \
+      -name worker1
+
+This method only works on Linux and should not be used by third-party workers.
 
 ---
 
