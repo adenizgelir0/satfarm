@@ -1,0 +1,67 @@
+# ---- Stage 1: build the Go binary + drat-trim + march_cu ----
+FROM golang:1.25 AS builder
+
+WORKDIR /app
+
+# Install tools needed to build drat-trim and march_cu
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+        build-essential \
+        git \
+        curl \
+        ca-certificates && \
+    rm -rf /var/lib/apt/lists/*
+
+# Copy go mod/sum first to cache deps
+COPY go.mod go.sum ./
+RUN go mod download
+
+# Copy the rest of the source
+COPY . .
+
+# Build the server binary
+RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 \
+    go build -o server ./cmd/server
+
+# Build drat-trim from source
+RUN curl -L -o /tmp/drat-trim.c \
+      https://www.cs.utexas.edu/~marijn/drat-trim/drat-trim.c && \
+    gcc -O2 -o /usr/local/bin/drat-trim /tmp/drat-trim.c && \
+    rm /tmp/drat-trim.c
+
+# Build march_cu from the CnC repository
+RUN git clone https://github.com/marijnheule/CnC.git /tmp/CnC \
+ && cd /tmp/CnC/march_cu \
+ && make clean || true \
+ && make CFLAGS="-O3 -fno-strict-aliasing -Wall -DNDEBUG -std=c99 -fcommon" \
+ && cp march_cu /usr/local/bin/march_cu
+
+# ---- Stage 2: minimal runtime image ----
+FROM debian:stable-slim
+
+# For HTTPS calls, etc.
+RUN apt-get update && apt-get install -y ca-certificates && \
+    rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+
+# Copy the server binary and assets from builder stage
+COPY --from=builder /app/server /app/server
+COPY --from=builder /app/db /app/db
+COPY --from=builder /app/templates /app/templates
+COPY --from=builder /app/static /app/static
+
+# Copy drat-trim & march_cu from builder stage
+COPY --from=builder /usr/local/bin/drat-trim /usr/local/bin/drat-trim
+
+# Default envs (can be overridden by docker-compose)
+ENV DATABASE_URL=postgres://app:app@db:5432/appdb?sslmode=disable
+
+# Paths for SAT tools
+ENV DRAT_TRIM_PATH=/usr/local/bin/drat-trim
+
+# Expose HTTP + libp2p ports
+EXPOSE 8080
+EXPOSE 50051
+
+ENTRYPOINT ["/app/server"]

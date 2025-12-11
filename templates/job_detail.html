@@ -1,0 +1,249 @@
+{{define "job_detail.html"}}
+<!DOCTYPE html>
+<html lang="en" class="h-full bg-slate-100">
+<head>
+    <meta charset="UTF-8" />
+    <title>SATFARM – Job {{.Job.ID}}</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+
+<body class="h-full text-slate-900">
+<div class="min-h-screen bg-slate-100">
+    <main class="max-w-4xl mx-auto px-4 py-6 space-y-6">
+
+        <div class="flex items-center justify-between">
+            <div>
+                <h1 class="text-lg font-semibold tracking-tight">Job #{{.Job.ID}}</h1>
+                <p class="text-xs text-slate-500 mt-0.5">
+                    File: <span class="font-mono">{{.Job.FileName}}</span>
+                </p>
+            </div>
+
+            <a href="/dashboard" class="text-xs text-slate-600 hover:underline">
+                ← Back to dashboard
+            </a>
+        </div>
+
+        <!-- Job summary -->
+        <section class="bg-white border border-slate-200 rounded-md p-4 space-y-4 text-sm">
+            <div class="flex flex-wrap gap-4">
+                <div>
+                    <div class="text-[11px] uppercase text-slate-500">Job status</div>
+                    <div class="mt-1">
+                        {{if eq .Job.Status "completed"}}
+                            <span class="inline-flex items-center rounded-full bg-emerald-50 text-emerald-700 px-2 py-0.5 text-[11px]">
+                                completed
+                            </span>
+                        {{else if eq .Job.Status "running"}}
+                            <span class="inline-flex items-center rounded-full bg-blue-50 text-blue-700 px-2 py-0.5 text-[11px]">
+                                running
+                            </span>
+                        {{else if eq .Job.Status "failed"}}
+                            <span class="inline-flex items-center rounded-full bg-rose-50 text-rose-700 px-2 py-0.5 text-[11px]">
+                                failed
+                            </span>
+                        {{else if eq .Job.Status "pending"}}
+                            <span class="inline-flex items-center rounded-full bg-slate-50 text-slate-700 px-2 py-0.5 text-[11px]">
+                                pending
+                            </span>
+                        {{else}}
+                            <span class="inline-flex items-center rounded-full bg-slate-50 text-slate-700 px-2 py-0.5 text-[11px]">
+                                {{.Job.Status}}
+                            </span>
+                        {{end}}
+                    </div>
+                </div>
+
+                <div>
+                    <div class="text-[11px] uppercase text-slate-500">Max workers</div>
+                    <div class="mt-1 font-mono">{{.Job.MaxWorkers}}</div>
+                </div>
+
+                <div>
+                    <div class="text-[11px] uppercase text-slate-500">Created at</div>
+                    <div class="mt-1 text-xs">{{.Job.CreatedAt}}</div>
+                </div>
+
+                <div>
+                    <div class="text-[11px] uppercase text-slate-500">Result time</div>
+                    <div class="mt-1 text-xs">
+                        {{if .Result.HasResult}}
+                            {{if .Result.CreatedAt}}{{.Result.CreatedAt}}{{else}}(time unknown){{end}}
+                        {{else}}–{{end}}
+                    </div>
+                </div>
+            </div>
+
+            <!-- Job-level SAT/UNSAT result -->
+            <div class="border-t border-dashed border-slate-200 pt-3">
+                <div class="text-[11px] uppercase text-slate-500 mb-1">Job result</div>
+
+                {{if .Result.HasResult}}
+                    <div class="flex flex-col gap-1 text-xs">
+                        <div>
+                            {{if eq .Result.Kind "SAT"}}
+                                <span class="inline-flex items-center rounded-full bg-emerald-50 text-emerald-700 px-2 py-0.5 text-[11px]">
+                                    SAT
+                                </span>
+                            {{else if eq .Result.Kind "UNSAT"}}
+                                <span class="inline-flex items-center rounded-full bg-purple-50 text-purple-700 px-2 py-0.5 text-[11px]">
+                                    UNSAT
+                                </span>
+                            {{else}}
+                                {{.Result.Kind}}
+                            {{end}}
+                        </div>
+
+                        <div class="mt-1">
+                            {{if eq .Result.Kind "SAT"}}
+                                <div class="text-[11px] uppercase text-slate-500 mb-0.5">
+                                    Satisfying assignment
+                                </div>
+                                <div class="font-mono text-[11px] bg-slate-50 border border-slate-200 rounded px-2 py-1 break-all">
+                                    {{if .Result.Assignment}}{{.Result.Assignment}}{{else}}(not recorded){{end}}
+                                </div>
+                            {{else if eq .Result.Kind "UNSAT"}}
+                                <div class="text-[11px] text-slate-500">
+                                    UNSAT – no global assignment (see shard proofs if stored).
+                                </div>
+                            {{end}}
+                        </div>
+                    </div>
+                {{else}}
+                    <div class="text-xs text-slate-500">
+                        No final result has been recorded for this job yet.
+                    </div>
+                {{end}}
+            </div>
+        </section>
+
+        <!-- Shards -->
+        <section class="bg-white border border-slate-200 rounded-md p-4 space-y-3 text-sm">
+            <div class="flex items-center justify-between">
+                <h2 class="text-sm font-semibold tracking-tight text-slate-900">
+                    Shards ({{len .Shards}})
+                </h2>
+            </div>
+
+            <div class="border border-slate-200 rounded-md">
+                <!-- Scrollable shards table -->
+                <div class="max-h-80 overflow-y-auto">
+                    <table class="w-full text-xs">
+                        <thead class="bg-slate-50 text-slate-500">
+                        <tr>
+                            <th class="px-3 py-1.5 text-left font-medium">Shard ID</th>
+                            <th class="px-3 py-1.5 text-left font-medium">Shard status</th>
+                            <th class="px-3 py-1.5 text-left font-medium">Result</th>
+                            <th class="px-3 py-1.5 text-left font-medium">Verification</th>
+                            <th class="px-3 py-1.5 text-left font-medium">Assignment (SAT)</th>
+                            <th class="px-3 py-1.5 text-left font-medium">DRAT file (UNSAT)</th>
+                            <th class="px-3 py-1.5 text-left font-medium">Cube literals</th>
+                            <th class="px-3 py-1.5 text-left font-medium">Created</th>
+                            <th class="px-3 py-1.5 text-left font-medium">Updated</th>
+                        </tr>
+                        </thead>
+                        <tbody class="divide-y divide-slate-200 text-slate-700">
+                        {{range .Shards}}
+                            <tr>
+                                <td class="px-3 py-1.5 font-mono">{{.ID}}</td>
+
+                                <!-- Shard status from job_shards.status -->
+                                <td class="px-3 py-1.5">
+                                    {{if eq .ShardStatus "completed"}}
+                                        <span class="inline-flex items-center rounded-full bg-emerald-50 text-emerald-700 px-2 py-0.5 text-[11px]">
+                                            completed
+                                        </span>
+                                    {{else if eq .ShardStatus "running"}}
+                                        <span class="inline-flex items-center rounded-full bg-blue-50 text-blue-700 px-2 py-0.5 text-[11px]">
+                                            running
+                                        </span>
+                                    {{else if eq .ShardStatus "failed"}}
+                                        <span class="inline-flex items-center rounded-full bg-rose-50 text-rose-700 px-2 py-0.5 text-[11px]">
+                                            failed
+                                        </span>
+                                    {{else if eq .ShardStatus "pending"}}
+                                        <span class="inline-flex items-center rounded-full bg-slate-50 text-slate-700 px-2 py-0.5 text-[11px]">
+                                            pending
+                                        </span>
+                                    {{else}}
+                                        <span class="inline-flex items-center rounded-full bg-slate-50 text-slate-700 px-2 py-0.5 text-[11px]">
+                                            {{.ShardStatus}}
+                                        </span>
+                                    {{end}}
+                                </td>
+
+                                <!-- Result kind: SAT / UNSAT / – -->
+                                <td class="px-3 py-1.5">
+                                    {{if .ResultKind}}
+                                        {{if eq .ResultKind "SAT"}}
+                                            <span class="inline-flex items-center rounded-full bg-emerald-50 text-emerald-700 px-2 py-0.5 text-[11px]">
+                                                SAT
+                                            </span>
+                                        {{else if eq .ResultKind "UNSAT"}}
+                                            <span class="inline-flex items-center rounded-full bg-purple-50 text-purple-700 px-2 py-0.5 text-[11px]">
+                                                UNSAT
+                                            </span>
+                                        {{else}}
+                                            {{.ResultKind}}
+                                        {{end}}
+                                    {{else}}
+                                        –
+                                    {{end}}
+                                </td>
+
+                                <!-- Verification status -->
+                                <td class="px-3 py-1.5">
+                                    {{if .ResultStatus}}
+                                        {{if eq .ResultStatus "verified"}}
+                                            <span class="inline-flex items-center rounded-full bg-emerald-50 text-emerald-700 px-2 py-0.5 text-[11px]">
+                                                verified
+                                            </span>
+                                        {{else if eq .ResultStatus "unverified"}}
+                                            <span class="inline-flex items-center rounded-full bg-amber-50 text-amber-700 px-2 py-0.5 text-[11px]">
+                                                unverified
+                                            </span>
+                                        {{else}}
+                                            {{.ResultStatus}}
+                                        {{end}}
+                                    {{else}}
+                                        –
+                                    {{end}}
+                                </td>
+
+                                <!-- Assignment -->
+                                <td class="px-3 py-1.5 font-mono text-[11px]">
+                                    {{if .Assignment}}{{.Assignment}}{{else}}–{{end}}
+                                </td>
+
+                                <!-- DRAT file ID -->
+                                <td class="px-3 py-1.5 font-mono text-[11px]">
+                                    {{if .DratFileLabel}}{{.DratFileLabel}}{{else}}–{{end}}
+                                </td>
+
+                                <!-- Cube literals -->
+                                <td class="px-3 py-1.5 font-mono text-[11px]">
+                                    {{.Cube}}
+                                </td>
+
+                                <td class="px-3 py-1.5">{{.CreatedAt}}</td>
+                                <td class="px-3 py-1.5">{{.UpdatedAt}}</td>
+                            </tr>
+                        {{else}}
+                            <tr>
+                                <td colspan="9" class="px-3 py-3 text-center text-slate-400 text-[11px]">
+                                    No shards for this job yet.
+                                </td>
+                            </tr>
+                        {{end}}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+    </main>
+</div>
+</body>
+</html>
+{{end}}

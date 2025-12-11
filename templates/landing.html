@@ -1,0 +1,331 @@
+{{define "landing.html"}}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>SATFARM – Verifiable SAT Compute Marketplace.</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+
+<body class="relative min-h-screen bg-gray-100 text-gray-900">
+
+    <!-- Subtle grid background -->
+    <div class="pointer-events-none fixed inset-0 opacity-40"
+         style="
+            background-image:
+                linear-gradient(to right, rgba(148,163,184,0.25) 1px, transparent 1px),
+                linear-gradient(to bottom, rgba(148,163,184,0.25) 1px, transparent 1px);
+            background-size: 28px 28px;
+         ">
+    </div>
+
+    <div class="relative z-10 min-h-screen flex flex-col">
+
+        <!-- Header -->
+        <header class="border-b border-gray-200 bg-white/80 backdrop-blur-sm">
+            <div class="max-w-5xl mx-auto px-4 py-3 flex items-center justify-between">
+                <div class="flex items-center gap-2">
+                    <div class="inline-flex items-center justify-center px-3 py-1 bg-gray-900 text-white rounded-md text-sm font-semibold tracking-tight">
+                        SATFARM
+                    </div>
+                    <span class="text-sm text-gray-500 hidden sm:inline">
+                        Verifiable compute for SAT at scale.
+                    </span>
+                </div>
+                <nav class="flex items-center gap-4 text-sm">
+                    <a href="#how-it-works" class="text-gray-600 hover:text-gray-900">How it works</a>
+                    <a href="#features" class="text-gray-600 hover:text-gray-900 hidden sm:inline">Why SATFARM</a>
+                    <a href="#for-participants" class="text-gray-600 hover:text-gray-900 hidden sm:inline">For users</a>
+                    <div class="h-5 w-px bg-gray-300 hidden sm:block"></div>
+                    <a href="/login" class="text-gray-700 hover:text-gray-900">Sign in</a>
+                    <a href="/signup" class="inline-flex items-center justify-center rounded-md bg-gray-900 px-3 py-1.5 text-white font-medium hover:bg-gray-800">
+                        Create account
+                    </a>
+                </nav>
+            </div>
+        </header>
+
+        <!-- Main content -->
+        <main class="flex-1">
+            <section class="max-w-5xl mx-auto px-4 py-12 sm:py-16">
+                <div class="grid gap-10 lg:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)] items-start">
+                    <!-- Hero text -->
+                    <div>
+                        <h1 class="text-3xl sm:text-4xl font-semibold text-gray-900 leading-tight">
+                            A marketplace for SAT compute where nobody has to trust anybody.
+                        </h1>
+                        <p class="mt-4 text-sm sm:text-base text-gray-600 max-w-xl">
+                            SATFARM connects users with heavy SAT instances to users who rent out
+                            their compute. From a single account you can mint <span class="font-mono">client</span>
+                            tokens to post jobs and <span class="font-mono">worker</span> tokens to solve them on your own machines.
+                            UNSAT requires DRAT/GRAT proofs, SAT requires a concrete model, and disputes go through
+                            an on-platform verifier with penalties for cheating on either side.
+                        </p>
+
+                        <div class="mt-6 flex flex-wrap items-center gap-3">
+                            <a href="/signup"
+                               class="inline-flex items-center justify-center rounded-md bg-gray-900 px-4 py-2 text-sm font-medium text-white hover:bg-gray-800">
+                                Create a free account
+                            </a>
+                            <a href="/login"
+                               class="text-sm text-gray-700 hover:text-gray-900">
+                                Already have one? Sign in →
+                            </a>
+                        </div>
+
+                        <div class="mt-6 text-xs text-gray-500 max-w-md">
+                            One identity, two roles: use the same dashboard to manage balances, issue API tokens
+                            for client and worker nodes, and inspect proofs and dispute history.
+                        </div>
+                    </div>
+
+                    <!-- Right card: “Job snapshot” -->
+                    <div class="bg-white border border-gray-200 rounded-xl shadow-sm p-5">
+                        <div class="text-xs font-medium text-gray-500 uppercase mb-3">
+                            Example job lifecycle
+                        </div>
+
+                        <div class="h-80 overflow-y-auto pr-2 space-y-3 text-sm">
+
+                            <!-- Client posts job -->
+                            <div class="border border-gray-200 rounded-md px-3 py-2 bg-gray-50">
+                                <div class="text-[11px] text-gray-500 mb-1">Client · Job #3421</div>
+                                <p class="text-gray-800">
+                                    Using a <span class="font-mono">client</span> token, I want
+                                    <span class="font-mono">rail_128.cnf</span> solved.
+                                    Bounty: <span class="font-mono">0.15</span> credits.
+                                    Proof required for UNSAT, model required for SAT.
+                                </p>
+                            </div>
+
+                            <!-- Worker claim -->
+                            <div class="border border-gray-200 rounded-md px-3 py-2">
+                                <div class="text-[11px] text-gray-500 mb-1">Worker</div>
+                                <p class="text-gray-700">
+                                    With my <span class="font-mono">worker</span> token, I accept job #3421.
+                                    Estimated runtime: ~90 seconds on 16 cores. I will return DRAT + GRAT
+                                    certificates if UNSAT.
+                                </p>
+                            </div>
+
+                            <!-- Worker result -->
+                            <div class="border border-gray-200 rounded-md px-3 py-2 bg-gray-50">
+                                <div class="text-[11px] text-gray-500 mb-1">Worker · Result</div>
+                                <p class="text-gray-800">
+                                    Status: <span class="font-semibold text-emerald-700">UNSAT</span>.
+                                    Uploaded:
+                                </p>
+                                <ul class="mt-2 text-gray-800 text-xs list-disc list-inside">
+                                    <li><span class="font-mono">rail_128.cnf</span></li>
+                                    <li><span class="font-mono">rail_128.drat</span></li>
+                                    <li><span class="font-mono">rail_128.grat</span></li>
+                                </ul>
+                            </div>
+
+                            <!-- Client verification -->
+                            <div class="border border-gray-200 rounded-md px-3 py-2">
+                                <div class="text-[11px] text-gray-500 mb-1">Client · Local check</div>
+                                <p class="text-gray-700">
+                                    Running <span class="font-mono">gratgen</span> &amp; <span class="font-mono">gratchk</span> locally.
+                                    If verification fails, I can file a dispute to the hub from my dashboard.
+                                </p>
+                            </div>
+
+                            <!-- Dispute flow -->
+                            <div class="border border-dashed border-gray-300 rounded-md px-3 py-2 bg-white">
+                                <div class="text-[11px] text-gray-500 mb-1">SATFARM · Arbitration</div>
+                                <p class="text-gray-700">
+                                    In case of disagreement, SATFARM replays the trace on trusted solvers
+                                    and checkers. If the worker cheated, their stake is slashed. If the
+                                    client filed a bogus complaint, the worker is compensated and the
+                                    client’s reputation is penalized.
+                                </p>
+                            </div>
+
+                        </div>
+
+                        <p class="mt-4 text-[11px] text-gray-500">
+                            Every job is backed by verifiable artifacts, not hand-wavy claims: DRAT/GRAT proofs,
+                            concrete models, and an on-platform auditor.
+                        </p>
+                    </div>
+                </div>
+            </section>
+
+            <!-- How it works -->
+            <section id="how-it-works" class="border-t border-gray-200 bg-white/80">
+                <div class="max-w-5xl mx-auto px-4 py-10">
+                    <h2 class="text-lg font-semibold text-gray-900">
+                        How SATFARM works
+                    </h2>
+                    <p class="mt-2 text-sm text-gray-600 max-w-2xl">
+                        SATFARM is a hub that coordinates SAT jobs, workers, and verification. You have a single
+                        account; from your dashboard you mint client and worker tokens and point them at your
+                        own machines, clusters, or lab servers.
+                    </p>
+
+                    <div class="mt-6 grid gap-6 sm:grid-cols-3">
+                        <div class="border border-gray-200 rounded-lg bg-white p-4">
+                            <div class="text-xs font-semibold text-gray-500">Step 1</div>
+                            <h3 class="mt-2 text-sm font-semibold text-gray-900">
+                                Create an account &amp; issue tokens
+                            </h3>
+                            <p class="mt-2 text-xs text-gray-600">
+                                Sign in once, then generate API tokens. Use them in <span class="font-mono">satfarm-client</span>
+                                to post jobs and in <span class="font-mono">satfarm-worker</span> to rent out compute—no separate
+                                identities needed.
+                            </p>
+                        </div>
+
+                        <div class="border border-gray-200 rounded-lg bg-white p-4">
+                            <div class="text-xs font-semibold text-gray-500">Step 2</div>
+                            <h3 class="mt-2 text-sm font-semibold text-gray-900">
+                                Run SAT nodes on your own hardware
+                            </h3>
+                            <p class="mt-2 text-xs text-gray-600">
+                                Point worker nodes at SATFARM using your worker token. They receive jobs, run solvers
+                                like <span class="font-mono">kissat</span>, and upload proofs and models back to the hub.
+                            </p>
+                        </div>
+
+                        <div class="border border-gray-200 rounded-lg bg-white p-4">
+                            <div class="text-xs font-semibold text-gray-500">Step 3</div>
+                            <h3 class="mt-2 text-sm font-semibold text-gray-900">
+                                Verify, dispute, and settle
+                            </h3>
+                            <p class="mt-2 text-xs text-gray-600">
+                                Clients verify locally or via SATFARM’s checkers. Disputes invoke an on-platform
+                                replay using independent tools; stakes and reputation enforce honest behavior.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Features -->
+            <section id="features" class="border-t border-gray-200 bg-gray-50/90">
+                <div class="max-w-5xl mx-auto px-4 py-10">
+                    <h2 class="text-lg font-semibold text-gray-900">
+                        Built for verifiable, incentive-aligned SAT solving
+                    </h2>
+
+                    <div class="mt-6 grid gap-6 md:grid-cols-3">
+                        <div class="border border-gray-200 rounded-lg bg-white p-4">
+                            <h3 class="text-sm font-semibold text-gray-900">
+                                Proof-first design
+                            </h3>
+                            <p class="mt-2 text-xs text-gray-600">
+                                Every UNSAT result is backed by DRAT/GRAT certificates; every SAT result by a model.
+                                No opaque “solver says so” answers—only verifiable artifacts.
+                            </p>
+                        </div>
+
+                        <div class="border border-gray-200 rounded-lg bg-white p-4">
+                            <h3 class="text-sm font-semibold text-gray-900">
+                                One identity, many nodes
+                            </h3>
+                            <p class="mt-2 text-xs text-gray-600">
+                                A single account can back multiple client and worker nodes. Spin up transient
+                                workers on cloud VMs, keep long-lived ones on-prem, all linked to the same balance
+                                and reputation.
+                            </p>
+                        </div>
+
+                        <div class="border border-gray-200 rounded-lg bg-white p-4">
+                            <h3 class="text-sm font-semibold text-gray-900">
+                                Trustless matching
+                            </h3>
+                            <p class="mt-2 text-xs text-gray-600">
+                                Clients and workers never have to trust each other. The hub coordinates jobs,
+                                holds stakes, and uses proofs plus independent checkers to resolve disagreements.
+                            </p>
+                        </div>
+
+                        <div class="border border-gray-200 rounded-lg bg-white p-4">
+                            <h3 class="text-sm font-semibold text-gray-900">
+                                Pluggable solvers &amp; checkers
+                            </h3>
+                            <p class="mt-2 text-xs text-gray-600">
+                                Use your preferred SAT solvers and proof checkers, or rely on a standard stack
+                                (e.g. kissat + gratgen + gratchk). SATFARM records which toolchain was used per job.
+                            </p>
+                        </div>
+
+                        <div class="border border-gray-200 rounded-lg bg-white p-4">
+                            <h3 class="text-sm font-semibold text-gray-900">
+                                Auditable job history
+                            </h3>
+                            <p class="mt-2 text-xs text-gray-600">
+                                Every job keeps a trail: who solved it, which artifacts were submitted, and how
+                                verification and disputes were resolved. Great for research reproducibility.
+                            </p>
+                        </div>
+
+                        <div class="border border-gray-200 rounded-lg bg-white p-4">
+                            <h3 class="text-sm font-semibold text-gray-900">
+                                Reputation with teeth
+                            </h3>
+                            <p class="mt-2 text-xs text-gray-600">
+                                Honest behavior compounds. Repeated bogus proofs or complaints erode reputation
+                                and can trigger higher staking requirements or reduced job visibility.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- For participants -->
+            <section id="for-participants" class="border-t border-gray-200 bg-white">
+                <div class="max-w-5xl mx-auto px-4 py-10">
+                    <div class="grid gap-6 md:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)] items-start">
+                        <div>
+                            <h2 class="text-lg font-semibold text-gray-900">
+                                For people with problems and people with cores
+                            </h2>
+                            <p class="mt-2 text-sm text-gray-600">
+                                SATFARM is meant to be neutral ground: a place where compute-rich users and
+                                problem-rich users can meet safely. Accounts are symmetric—you decide from the
+                                dashboard whether a given token behaves as a client, a worker, or both.
+                            </p>
+
+                            <ul class="mt-4 space-y-2 text-sm text-gray-600">
+                                <li>• Turn large SAT backlogs into jobs with verifiable outcomes.</li>
+                                <li>• Monetize idle cores without giving up control of your machines.</li>
+                                <li>• Use staking, proofs, and dispute resolution instead of blind trust.</li>
+                            </ul>
+                        </div>
+
+                        <div class="border border-gray-200 rounded-lg bg-gray-50 p-4 text-sm">
+                            <h3 class="text-sm font-semibold text-gray-900">
+                                Start with a single machine
+                            </h3>
+                            <p class="mt-2 text-xs text-gray-600">
+                                Create an account, mint one client token and one worker token, and run both on
+                                the same box. Once you’re happy with the flow, extend to a cluster or share
+                                the hub with collaborators.
+                            </p>
+                            <a href="/signup"
+                               class="mt-3 inline-flex items-center justify-center rounded-md bg-gray-900 px-3 py-1.5 text-xs font-medium text-white hover:bg-gray-800">
+                                Create your SATFARM account
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </main>
+
+        <!-- Footer -->
+        <footer class="border-t border-gray-200 bg-white/80">
+            <div class="max-w-5xl mx-auto px-4 py-4 flex flex-col sm:flex-row items-center justify-between gap-2 text-xs text-gray-500">
+                <span>© {{.Year}} SATFARM. All rights reserved.</span>
+                <div class="flex gap-4">
+                    <a href="#" class="hover:text-gray-700">Privacy</a>
+                    <a href="#" class="hover:text-gray-700">Terms</a>
+                    <a href="#" class="hover:text-gray-700">Contact</a>
+                </div>
+            </div>
+        </footer>
+    </div>
+</body>
+</html>
+{{end}}

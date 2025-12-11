@@ -1,0 +1,47 @@
+syntax = "proto3";
+
+package satfarm;
+
+option go_package = "satfarm/internal/grpc/proto;proto";
+
+service WorkerService {
+  rpc Work (stream WorkerMessage) returns (stream ServerMessage);
+}
+
+message WorkerMessage {
+  oneof msg {
+    Hello     hello      = 1;
+    JobResult job_result = 2;
+  }
+}
+
+message ServerMessage {
+  oneof msg {
+    AssignJob assign_job = 1;
+    CancelJob cancel_job = 2;
+    Ping      ping       = 3;
+  }
+}
+
+message Hello {
+  string worker_name = 1;
+  string solver_type = 2;
+}
+
+// Server tells worker: solve original CNF under this cube.
+message AssignJob {
+  int64  job_id        = 1; // jobs.id
+  int64  shard_id      = 2; // job_shards.id
+  repeated int32 cube_literals = 3; // cube for this shard
+}
+
+message JobResult {
+  int64  job_id   = 1; // jobs.id
+  int64  shard_id = 2; // job_shards.id
+  bool   sat      = 3;
+  string model_or_core_info = 4; // model or UNSAT info
+}
+
+message CancelJob { string job_id = 1; }
+
+message Ping {}

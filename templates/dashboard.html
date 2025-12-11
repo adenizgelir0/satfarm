@@ -1,0 +1,846 @@
+{{define "dashboard.html"}}
+<!DOCTYPE html>
+<html lang="en" class="h-full bg-slate-100">
+<head>
+    <meta charset="UTF-8" />
+    <title>SATFARM – Dashboard</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+
+<body class="h-full text-slate-900">
+<div class="min-h-screen flex">
+
+    <!-- Sidebar -->
+    <aside class="hidden md:flex md:flex-col w-56 bg-white border-r border-slate-200">
+        <div class="h-14 flex items-center px-4 border-b border-slate-200">
+            <div class="flex items-center gap-2">
+                <span class="inline-flex h-7 w-7 items-center justify-center rounded-md bg-slate-900 text-xs font-semibold text-white">
+                    SF
+                </span>
+                <span class="text-sm font-semibold tracking-tight">SATFARM</span>
+            </div>
+        </div>
+
+        <nav class="flex-1 px-3 py-4 space-y-1 text-sm">
+            <button
+                type="button"
+                data-target="wallet"
+                class="dashboard-nav-item flex w-full items-center gap-2 rounded-md px-3 py-2 bg-slate-900 text-white font-medium text-left">
+                💰 Wallet
+            </button>
+
+            <button
+                type="button"
+                data-target="jobs"
+                class="dashboard-nav-item flex w-full items-center gap-2 rounded-md px-3 py-2 text-slate-700 hover:bg-slate-100 text-left">
+                📦 Jobs
+            </button>
+
+            <button
+                type="button"
+                data-target="tokens"
+                class="dashboard-nav-item flex w-full items-center gap-2 rounded-md px-3 py-2 text-slate-700 hover:bg-slate-100 text-left">
+                🔑 Tokens
+            </button>
+        </nav>
+
+        <div class="px-4 py-3 border-t border-slate-200 text-[11px] text-slate-500">
+            Signed in as <span class="font-medium text-slate-700">{{.UserName}}</span>
+        </div>
+    </aside>
+
+    <!-- Main -->
+    <div class="flex-1 flex flex-col">
+        <main class="flex-1 bg-slate-100">
+            <div class="max-w-4xl mx-auto px-4 py-6 space-y-6">
+
+                <div>
+                    <h1 class="text-lg font-semibold tracking-tight">Dashboard</h1>
+                    <p class="text-xs text-slate-500 mt-0.5">Manage your SATFARM account, tokens, and jobs.</p>
+                </div>
+
+                <!-- Card container -->
+                <section class="bg-white border border-slate-200 rounded-md p-4">
+
+                    <!-- WALLET PANEL -->
+                    <div id="panel-wallet" class="dashboard-panel space-y-4">
+                        <h2 class="text-sm font-semibold tracking-tight text-slate-900">Wallet</h2>
+
+                        <!-- Balance -->
+                        <div class="bg-slate-50 border border-slate-200 rounded-md p-4 flex items-center justify-between">
+                            <div>
+                                <div class="text-[11px] text-slate-500 uppercase">Balance</div>
+                                <div class="mt-2 text-2xl font-mono">
+                                    <span id="wallet-balance">{{.Balance}}</span> sat
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Deposit / Withdraw (AJAX buttons) -->
+                        <div class="flex flex-col sm:flex-row gap-3 pt-2">
+                            <button
+                                id="deposit-btn"
+                                type="button"
+                                class="flex-1 rounded bg-emerald-600 text-white px-3 py-1.5 text-xs hover:bg-emerald-700 font-medium">
+                                Deposit (test)
+                            </button>
+
+                            <button
+                                id="withdraw-btn"
+                                type="button"
+                                class="flex-1 rounded bg-rose-600 text-white px-3 py-1.5 text-xs hover:bg-rose-700 font-medium">
+                                Withdraw (test)
+                            </button>
+                        </div>
+
+                        <!-- Wallet message -->
+                        <div id="wallet-message" class="text-[11px] mt-2 min-h-[1.25rem] text-slate-500"></div>
+
+                        <!-- Transactions log -->
+                        <div class="mt-6">
+                            <div class="flex items-center justify-between mb-2">
+                                <h3 class="text-xs font-semibold text-slate-700">
+                                    Recent transactions
+                                </h3>
+                                <button
+                                    id="tx-refresh-btn"
+                                    type="button"
+                                    class="inline-flex items-center rounded border border-slate-200 px-2 py-1 text-[11px] text-slate-600 hover:bg-slate-50">
+                                    Refresh
+                                </button>
+                            </div>
+
+                            <div class="border border-slate-200 rounded-md">
+                                <!-- Scrollable area -->
+                                <div class="max-h-64 overflow-y-auto">
+                                    <table class="w-full text-xs">
+                                        <thead class="bg-slate-50 text-slate-500">
+                                        <tr>
+                                            <th class="px-3 py-1.5 text-left font-medium">Date</th>
+                                            <th class="px-3 py-1.5 text-right font-medium">Amount (sat)</th>
+                                            <th class="px-3 py-1.5 text-left font-medium">Reason</th>
+                                        </tr>
+                                        </thead>
+                                        <tbody id="tx-table-body" class="divide-y divide-slate-200 text-slate-700">
+                                        {{range .Transactions}}
+                                            <tr>
+                                                <td class="px-3 py-1.5">{{.CreatedAt}}</td>
+                                                <td class="px-3 py-1.5 text-right font-mono">{{.AmountSat}}</td>
+                                                <td class="px-3 py-1.5">{{.Reason}}</td>
+                                            </tr>
+                                        {{else}}
+                                            <tr class="empty-row">
+                                                <td colspan="3" class="px-3 py-3 text-center text-slate-400 text-[11px]">
+                                                    No transactions yet.
+                                                </td>
+                                            </tr>
+                                        {{end}}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- JOBS PANEL -->
+                    <div id="panel-jobs" class="dashboard-panel space-y-4 hidden">
+                        <h2 class="text-sm font-semibold tracking-tight text-slate-900">Jobs</h2>
+
+                        <p class="text-xs text-slate-500">
+                            Create SAT jobs by uploading a CNF file and choosing how many workers you want the server
+                            to use concurrently.
+                        </p>
+
+                        <!-- Create Job Form -->
+                        <form id="job-create-form" class="space-y-3 text-sm" enctype="multipart/form-data">
+                            <div>
+                                <label class="block text-xs font-medium text-slate-700 mb-1" for="cnf-file">
+                                    CNF file
+                                </label>
+                                <input
+                                    id="cnf-file"
+                                    name="cnf"
+                                    type="file"
+                                    accept=".cnf,text/plain"
+                                    required
+                                    class="w-full text-xs file:mr-3 file:px-2 file:py-1.5 file:text-xs file:rounded file:border-0 file:bg-slate-900 file:text-white file:cursor-pointer cursor-pointer border border-slate-300 rounded focus:ring-1 focus:ring-slate-400"
+                                >
+                            </div>
+
+                            <div class="flex flex-col sm:flex-row gap-3 items-end">
+                                  <div class="flex-1">
+                                    <label class="block text-xs font-medium text-slate-700 mb-1" for="max-workers-display">
+                                        Max workers
+                                    </label>
+
+                                    <!-- Pretty power-of-two stepper -->
+                                    <div class="inline-flex items-center gap-2">
+                                        <button
+                                            type="button"
+                                            id="max-workers-dec"
+                                            class="inline-flex items-center justify-center rounded-md border border-slate-300 bg-white px-2 py-1 text-xs text-slate-700 hover:bg-slate-50"
+                                        >
+                                            –½
+                                        </button>
+
+                                        <div
+                                            id="max-workers-display"
+                                            class="min-w-[3rem] text-center rounded-md border border-slate-300 bg-slate-50 px-3 py-1.5 text-xs font-mono text-slate-900"
+                                        >
+                                            1
+                                        </div>
+
+                                        <button
+                                            type="button"
+                                            id="max-workers-inc"
+                                            class="inline-flex items-center justify-center rounded-md border border-slate-300 bg-white px-2 py-1 text-xs text-slate-700 hover:bg-slate-50"
+                                        >
+                                            ×2
+                                        </button>
+                                    </div>
+
+                                    <!-- Actual value used by the form/Go code -->
+                                    <input
+                                        id="max-workers"
+                                        name="max_workers"
+                                        type="hidden"
+                                        value="1"
+                                    >
+                                </div> 
+
+                                <div class="flex-1 text-xs text-slate-600">
+                                    <div class="font-medium mb-1">Estimated cost</div>
+                                    <div id="job-price" class="font-mono text-sm">
+                                        –
+                                    </div>
+                                    <p class="text-[11px] text-slate-400 mt-1">
+                                        Cost is based on file size. (Test pricing: 10 sat per KB.)
+                                    </p>
+                                </div>
+
+                                <div class="flex-1">
+                                    <button
+                                        type="submit"
+                                        class="w-full rounded bg-slate-900 text-white px-3 py-1.5 text-xs hover:bg-slate-800 font-medium">
+                                        Create job
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div id="job-create-message" class="text-[11px] text-slate-500 min-h-[1.25rem]"></div>
+                        </form>
+
+                        <!-- Job List -->
+                        <div class="border-t border-dashed border-slate-200 pt-4">
+                            <h3 class="text-xs font-semibold mb-2">Your jobs</h3>
+
+                            <div class="border border-slate-200 rounded-md overflow-hidden">
+                                <table class="w-full text-xs">
+                                    <thead class="bg-slate-50 text-slate-500">
+                                    <tr>
+                                        <th class="px-3 py-1.5 text-left font-medium">ID</th>
+                                        <th class="px-3 py-1.5 text-left font-medium">File</th>
+                                        <th class="px-3 py-1.5 text-left font-medium">Created</th>
+                                        <th class="px-3 py-1.5 text-right font-medium">Max workers</th>
+                                        <th class="px-3 py-1.5 text-left font-medium">Status</th>
+                                        <th class="px-3 py-1.5 text-right font-medium"></th>
+                                    </tr>
+                                    </thead>
+                                    <tbody id="job-table-body" class="divide-y divide-slate-200 text-slate-700">
+                                    {{range .Jobs}}
+                                        <tr>
+                                            <td class="px-3 py-1.5 font-mono">{{.ID}}</td>
+                                            <td class="px-3 py-1.5">{{.FileName}}</td>
+                                            <td class="px-3 py-1.5">{{.CreatedAt}}</td>
+                                            <td class="px-3 py-1.5 text-right">{{.MaxWorkers}}</td>
+                                            <td class="px-3 py-1.5">{{.Status}}</td>
+                                            <td class="px-3 py-1.5 text-right">
+                                                <a
+                                                    href="/jobs/{{.ID}}"
+                                                    class="text-[11px] text-slate-600 hover:underline">
+                                                    View
+                                                </a>
+                                            </td>
+                                        </tr>
+                                    {{else}}
+                                        <tr class="empty-row">
+                                            <td colspan="6" class="px-3 py-3 text-center text-slate-400 text-[11px]">
+                                                No jobs yet.
+                                            </td>
+                                        </tr>
+                                    {{end}}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- TOKENS PANEL -->
+                    <div id="panel-tokens" class="dashboard-panel space-y-4 hidden">
+                        <h2 class="text-sm font-semibold tracking-tight text-slate-900">Tokens</h2>
+
+                        <!-- Where JS will inject the "new token" secret banner -->
+                        <div id="new-token-banner"></div>
+
+                        <p class="text-xs text-slate-500">
+                            Create API tokens for your worker nodes. Each token can be used by one or more workers.
+                        </p>
+
+                        <!-- Create Token Form (no roles) -->
+                        <form id="token-create-form" class="space-y-3 text-sm">
+                            <div>
+                                <label class="block text-xs font-medium text-slate-700 mb-1" for="label">
+                                    Token label
+                                </label>
+                                <input
+                                    id="label"
+                                    name="label"
+                                    type="text"
+                                    required
+                                    class="w-full rounded border border-slate-300 px-2 py-1.5 text-xs focus:ring-1 focus:ring-slate-400"
+                                    placeholder="home-worker-01">
+                            </div>
+
+                            <button
+                                type="submit"
+                                class="w-full rounded bg-slate-900 text-white px-3 py-1.5 text-xs hover:bg-slate-800 font-medium">
+                                Create token
+                            </button>
+                        </form>
+
+                        <!-- Token List -->
+                        <div class="border-t border-dashed border-slate-200 pt-4">
+                            <h3 class="text-xs font-semibold mb-2">Your tokens</h3>
+
+                            <div class="border border-slate-200 rounded-md overflow-hidden">
+                                <table class="w-full text-xs">
+                                    <thead class="bg-slate-50 text-slate-500">
+                                    <tr>
+                                        <th class="px-3 py-1.5 text-left font-medium">Label</th>
+                                        <th class="px-3 py-1.5 text-left font-medium">Created</th>
+                                        <th class="px-3 py-1.5 text-right font-medium">Status</th>
+                                        <th class="px-3 py-1.5 text-right font-medium"></th>
+                                    </tr>
+                                    </thead>
+
+                                    <tbody id="token-table-body" class="divide-y divide-slate-200 text-slate-700">
+                                    {{range .Tokens}}
+                                        <tr data-token-id="{{.ID}}">
+                                            <td class="px-3 py-1.5">{{.Label}}</td>
+                                            <td class="px-3 py-1.5">{{.CreatedAt}}</td>
+
+                                            <td class="px-3 py-1.5 text-right token-status-cell">
+                                                {{if .Revoked}}
+                                                <span class="inline-block rounded-full bg-rose-50 text-rose-700 px-2 py-0.5 text-[11px]">
+                                                    Revoked
+                                                </span>
+                                                {{else}}
+                                                <span class="inline-block rounded-full bg-emerald-50 text-emerald-700 px-2 py-0.5 text-[11px]">
+                                                    Active
+                                                </span>
+                                                {{end}}
+                                            </td>
+
+                                            <td class="px-3 py-1.5 text-right token-actions-cell">
+                                                {{if not .Revoked}}
+                                                <button
+                                                    type="button"
+                                                    class="token-revoke-btn text-[11px] text-rose-600 hover:underline">
+                                                    Revoke
+                                                </button>
+                                                {{end}}
+                                            </td>
+                                        </tr>
+                                    {{else}}
+                                        <tr class="empty-row">
+                                            <td colspan="4" class="px-3 py-3 text-center text-slate-400">
+                                                No tokens yet.
+                                            </td>
+                                        </tr>
+                                    {{end}}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+
+                </section>
+
+            </div>
+        </main>
+    </div>
+</div>
+
+<!-- JavaScript: panel switching + AJAX for wallet + tokens + jobs -->
+<script>
+(function () {
+    // ---------- Panel switching ----------
+    const navItems = document.querySelectorAll(".dashboard-nav-item");
+    const panels = {
+        wallet: document.getElementById("panel-wallet"),
+        tokens: document.getElementById("panel-tokens"),
+        jobs: document.getElementById("panel-jobs"),
+    };
+
+    function setActive(target) {
+        Object.keys(panels).forEach(key => {
+            panels[key].classList.toggle("hidden", key !== target);
+        });
+
+        navItems.forEach(btn => {
+            const t = btn.getAttribute("data-target");
+            const active = t === target;
+
+            btn.classList.toggle("bg-slate-900", active);
+            btn.classList.toggle("text-white", active);
+            btn.classList.toggle("font-medium", active);
+
+            btn.classList.toggle("text-slate-700", !active);
+            btn.classList.toggle("hover:bg-slate-100", !active);
+        });
+    }
+
+    navItems.forEach(btn => {
+        btn.addEventListener("click", () => {
+            setActive(btn.getAttribute("data-target"));
+        });
+    });
+
+    // Default to wallet
+    setActive("wallet");
+
+    // ---------- Wallet: deposit / withdraw via AJAX ----------
+    const walletMsgEl = document.getElementById("wallet-message");
+    const walletBalanceEl = document.getElementById("wallet-balance");
+    const txTableBody = document.getElementById("tx-table-body");
+    const txRefreshBtn = document.getElementById("tx-refresh-btn");
+
+    function setWalletMessage(msg, isError) {
+        walletMsgEl.textContent = msg || "";
+        walletMsgEl.classList.toggle("text-rose-600", !!isError);
+        walletMsgEl.classList.toggle("text-emerald-700", !!(!isError && msg));
+        walletMsgEl.classList.toggle("text-slate-500", !msg);
+    }
+
+    async function postJSON(path) {
+        const res = await fetch(path, {
+            method: "POST",
+            headers: {"Accept": "application/json"},
+            credentials: "same-origin"
+        });
+        let data = null;
+        try { data = await res.json(); } catch (_) {}
+        return { res, data };
+    }
+
+    function renderTransactions(txs) {
+        if (!txTableBody) return;
+
+        // Clear existing rows
+        while (txTableBody.firstChild) {
+            txTableBody.removeChild(txTableBody.firstChild);
+        }
+
+        if (!txs || txs.length === 0) {
+            const tr = document.createElement("tr");
+            tr.classList.add("empty-row");
+            tr.innerHTML = `
+                <td colspan="3" class="px-3 py-3 text-center text-slate-400 text-[11px]">
+                    No transactions yet.
+                </td>
+            `;
+            txTableBody.appendChild(tr);
+            return;
+        }
+
+        for (const tx of txs) {
+            const tr = document.createElement("tr");
+            tr.innerHTML = `
+                <td class="px-3 py-1.5">${tx.created_at}</td>
+                <td class="px-3 py-1.5 text-right font-mono">${tx.amount_sat}</td>
+                <td class="px-3 py-1.5">${tx.reason}</td>
+            `;
+            txTableBody.appendChild(tr);
+        }
+    }
+
+    async function refreshWallet() {
+        try {
+            const res = await fetch("/transactions", {
+                method: "GET",
+                headers: {"Accept": "application/json"},
+                credentials: "same-origin",
+            });
+
+            let data = null;
+            try { data = await res.json(); } catch (_) {}
+
+            if (!res.ok || !data || !data.ok) {
+                console.error("Failed to refresh wallet", res.status, data && data.error);
+                setWalletMessage("Failed to refresh wallet.", true);
+                return;
+            }
+
+            // update balance
+            if (typeof data.balance_str === "string") {
+                walletBalanceEl.textContent = data.balance_str;
+            } else if (typeof data.balance_satc === "number") {
+                walletBalanceEl.textContent = String(data.balance_satc);
+            }
+
+            // update transactions
+            renderTransactions(data.transactions || []);
+            setWalletMessage("", false);
+        } catch (err) {
+            console.error("wallet refresh error:", err);
+            setWalletMessage("Network error while refreshing wallet.", true);
+        }
+    }
+
+    if (txRefreshBtn) {
+        txRefreshBtn.addEventListener("click", () => {
+            refreshWallet();
+        });
+    }
+
+    const depositBtn = document.getElementById("deposit-btn");
+    const withdrawBtn = document.getElementById("withdraw-btn");
+
+    async function handleWalletAction(path, successLabel) {
+        setWalletMessage("Processing...", false);
+        try {
+            const { res, data } = await postJSON(path);
+            if (!res.ok || !data) {
+                setWalletMessage(`Request failed (status ${res.status})`, true);
+                return;
+            }
+            if (!data.ok) {
+                setWalletMessage(data.error || "Error", true);
+                return;
+            }
+
+            if (typeof data.balance_str === "string") {
+                walletBalanceEl.textContent = data.balance_str;
+            } else if (typeof data.balance === "number") {
+                walletBalanceEl.textContent = String(data.balance);
+            }
+
+            setWalletMessage(successLabel || "Balance updated.", false);
+        } catch (err) {
+            console.error("wallet action error:", err);
+            setWalletMessage("Network error", true);
+        }
+    }
+
+    if (depositBtn) {
+        depositBtn.addEventListener("click", () => {
+            handleWalletAction("/deposit", "Deposit successful.");
+        });
+    }
+    if (withdrawBtn) {
+        withdrawBtn.addEventListener("click", () => {
+            handleWalletAction("/withdraw", "Withdrawal successful.");
+        });
+    }
+
+    // ---------- Tokens: AJAX logic ----------
+    const tokenForm = document.getElementById("token-create-form");
+    const tokenTableBody = document.getElementById("token-table-body");
+    const newTokenBanner = document.getElementById("new-token-banner");
+
+    function showNewTokenBanner(secret) {
+        newTokenBanner.innerHTML = `
+            <div class="rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-[11px] text-amber-800 mb-2">
+              <div class="font-semibold mb-1">New token created</div>
+              <p>Copy this token and store it securely. You will not be able to see it again:</p>
+              <div class="mt-1 font-mono text-xs break-all bg-white border border-amber-200 rounded px-2 py-1">
+                ${secret}
+              </div>
+            </div>
+        `;
+    }
+
+    function removeTokenEmptyRowIfAny() {
+        const empty = tokenTableBody && tokenTableBody.querySelector(".empty-row");
+        if (empty) empty.remove();
+    }
+
+    function addTokenRow(token) {
+        if (!tokenTableBody || !token) return;
+        removeTokenEmptyRowIfAny();
+
+        const tr = document.createElement("tr");
+        tr.setAttribute("data-token-id", token.id);
+
+        tr.innerHTML = `
+            <td class="px-3 py-1.5">${token.label}</td>
+            <td class="px-3 py-1.5">${token.created_at}</td>
+            <td class="px-3 py-1.5 text-right token-status-cell">
+                <span class="inline-block rounded-full bg-emerald-50 text-emerald-700 px-2 py-0.5 text-[11px]">
+                    Active
+                </span>
+            </td>
+            <td class="px-3 py-1.5 text-right token-actions-cell">
+                <button
+                    type="button"
+                    class="token-revoke-btn text-[11px] text-rose-600 hover:underline">
+                    Revoke
+                </button>
+            </td>
+        `;
+
+        if (tokenTableBody.firstChild) {
+            tokenTableBody.insertBefore(tr, tokenTableBody.firstChild);
+        } else {
+            tokenTableBody.appendChild(tr);
+        }
+    }
+
+    if (tokenForm) {
+        tokenForm.addEventListener("submit", async function (e) {
+            e.preventDefault();
+
+            const formData = new FormData(tokenForm);
+            try {
+                const res = await fetch("/tokens/new", {
+                    method: "POST",
+                    body: new URLSearchParams(formData),
+                    headers: {"Accept": "application/json"},
+                    credentials: "same-origin",
+                });
+
+                let data = null;
+                try { data = await res.json(); } catch (_) {}
+
+                if (!res.ok || !data) {
+                    console.error("Failed to create token", res.status);
+                    return;
+                }
+                if (!data.ok) {
+                    console.error("Token create error:", data.error || "unknown");
+                    return;
+                }
+
+                showNewTokenBanner(data.secret);
+                if (data.token) {
+                    addTokenRow(data.token);
+                }
+                tokenForm.reset();
+            } catch (err) {
+                console.error("Token create fetch error:", err);
+            }
+        });
+    }
+
+    if (tokenTableBody) {
+        tokenTableBody.addEventListener("click", async function (e) {
+            const btn = e.target.closest(".token-revoke-btn");
+            if (!btn) return;
+
+            const row = btn.closest("tr");
+            if (!row) return;
+
+            const tokenId = row.getAttribute("data-token-id");
+            if (!tokenId) return;
+
+            try {
+                const params = new URLSearchParams();
+                params.set("token_id", tokenId);
+
+                const res = await fetch("/tokens/revoke", {
+                    method: "POST",
+                    body: params,
+                    headers: {"Accept": "application/json"},
+                    credentials: "same-origin",
+                });
+
+                let data = null;
+                try { data = await res.json(); } catch (_) {}
+
+                if (!res.ok || !data) {
+                    console.error("Failed to revoke token", res.status);
+                    return;
+                }
+                if (!data.ok) {
+                    console.error("Token revoke error:", data.error || "unknown");
+                    return;
+                }
+
+                const statusCell = row.querySelector(".token-status-cell");
+                const actionsCell = row.querySelector(".token-actions-cell");
+                if (statusCell) {
+                    statusCell.innerHTML = `
+                        <span class="inline-block rounded-full bg-rose-50 text-rose-700 px-2 py-0.5 text-[11px]">
+                            Revoked
+                        </span>
+                    `;
+                }
+                if (actionsCell) {
+                    actionsCell.innerHTML = "";
+                }
+
+            } catch (err) {
+                console.error("Token revoke fetch error:", err);
+            }
+        });
+    }
+
+    // ---------- Jobs: price preview + create job via AJAX ----------
+    const jobForm = document.getElementById("job-create-form");
+    const cnfInput = document.getElementById("cnf-file");
+    const maxWorkersInput = document.getElementById("max-workers");
+    const jobPriceEl = document.getElementById("job-price");
+    const jobMsgEl = document.getElementById("job-create-message");
+    const jobTableBody = document.getElementById("job-table-body");
+     const maxWorkersDisplay = document.getElementById("max-workers-display");
+    const maxWorkersDec = document.getElementById("max-workers-dec");
+    const maxWorkersInc = document.getElementById("max-workers-inc");
+
+    const WORKER_MIN = 1;
+    const WORKER_MAX = 64; // adjust if you want larger powers of 2
+
+    function setMaxWorkers(val) {
+        let v = parseInt(String(val || "1"), 10);
+        if (isNaN(v) || v < WORKER_MIN) v = WORKER_MIN;
+        if (v > WORKER_MAX) v = WORKER_MAX;
+
+        if (maxWorkersInput) {
+            maxWorkersInput.value = String(v);
+        }
+        if (maxWorkersDisplay) {
+            maxWorkersDisplay.textContent = String(v);
+        }
+    }
+
+    // Initial value
+    setMaxWorkers(maxWorkersInput ? maxWorkersInput.value || 1 : 1);
+
+    if (maxWorkersInc) {
+        maxWorkersInc.addEventListener("click", () => {
+            const cur = parseInt(maxWorkersInput.value || "1", 10) || 1;
+            if (cur < WORKER_MAX) {
+                setMaxWorkers(cur * 2);
+            }
+        });
+    }
+
+    if (maxWorkersDec) {
+        maxWorkersDec.addEventListener("click", () => {
+            const cur = parseInt(maxWorkersInput.value || "1", 10) || 1;
+            if (cur > WORKER_MIN) {
+                setMaxWorkers(cur / 2);
+            }
+        });
+    }
+
+
+    const PRICE_PER_KB = 1000; // 1000 sat per KB (test)
+
+    function setJobMessage(msg, isError) {
+        jobMsgEl.textContent = msg || "";
+        jobMsgEl.classList.toggle("text-rose-600", !!isError);
+        jobMsgEl.classList.toggle("text-emerald-700", !!(!isError && msg));
+        jobMsgEl.classList.toggle("text-slate-500", !msg);
+    }
+
+    function updatePricePreview() {
+        const file = cnfInput && cnfInput.files && cnfInput.files[0];
+        if (!file) {
+            jobPriceEl.textContent = "–";
+            return;
+        }
+        const sizeKB = file.size / 1024;
+        const estimated = Math.ceil(sizeKB * PRICE_PER_KB);
+        jobPriceEl.textContent = `${estimated} sat (approx)`;
+    }
+
+    if (cnfInput) {
+        cnfInput.addEventListener("change", updatePricePreview);
+    }
+
+    function removeJobsEmptyRowIfAny() {
+        const empty = jobTableBody && jobTableBody.querySelector(".empty-row");
+        if (empty) empty.remove();
+    }
+
+    function prependJobRow(job) {
+        if (!jobTableBody || !job) return;
+        removeJobsEmptyRowIfAny();
+
+        const tr = document.createElement("tr");
+        tr.innerHTML = `
+            <td class="px-3 py-1.5 font-mono">${job.id}</td>
+            <td class="px-3 py-1.5">${job.file_name || ""}</td>
+            <td class="px-3 py-1.5">${job.created_at || ""}</td>
+            <td class="px-3 py-1.5 text-right">${job.max_workers || ""}</td>
+            <td class="px-3 py-1.5">${job.status || ""}</td>
+            <td class="px-3 py-1.5 text-right">
+                <a href="/jobs/${job.id}" class="text-[11px] text-slate-600 hover:underline">
+                    View
+                </a>
+            </td>
+        `;
+
+        if (jobTableBody.firstChild) {
+            jobTableBody.insertBefore(tr, jobTableBody.firstChild);
+        } else {
+            jobTableBody.appendChild(tr);
+        }
+    }
+
+    if (jobForm) {
+        jobForm.addEventListener("submit", async function (e) {
+            e.preventDefault();
+            setJobMessage("Creating job...", false);
+
+            const file = cnfInput && cnfInput.files && cnfInput.files[0];
+            if (!file) {
+                setJobMessage("Please select a CNF file.", true);
+                return;
+            }
+
+            const maxWorkers = maxWorkersInput ? maxWorkersInput.value : "1";
+            const formData = new FormData();
+            formData.set("cnf", file);
+            formData.set("max_workers", maxWorkers);
+
+            try {
+                const res = await fetch("/jobs/new", {
+                    method: "POST",
+                    body: formData,
+                    credentials: "same-origin",
+                });
+
+                let data = null;
+                try { data = await res.json(); } catch (_) {}
+
+                if (!res.ok || !data) {
+                    setJobMessage(`Failed to create job (status ${res.status})`, true);
+                    return;
+                }
+
+                if (!data.ok) {
+                    setJobMessage(data.error || "Failed to create job", true);
+                    return;
+                }
+
+                setJobMessage("Job created.", false);
+
+                if (data.job) {
+                    prependJobRow(data.job);
+                }
+                refreshWallet()
+
+            } catch (err) {
+                console.error("job create error:", err);
+                setJobMessage("Network error while creating job.", true);
+            }
+        });
+    }
+})();
+</script>
+
+</body>
+</html>
+{{end}}
