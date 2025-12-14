@@ -220,7 +220,12 @@ func (s *SimpleScheduler) MaybeAssignWork(workerID int64) error {
 	s.workerShard[workerID] = sh
 	log.Printf("assigned job=%d shard=%d to worker=%d", sh.JobID, sh.ShardID, workerID)
 
-	go s.markShardStatus(sh.ShardID, "running")
+	// Record benchmark timestamps
+	workerName := ""
+	if conn.Info != nil {
+		workerName = fmt.Sprintf("user_%d_conn_%d", conn.Info.UserID, workerID)
+	}
+	go s.markShardAssigned(sh.JobID, sh.ShardID, workerName)
 
 	return nil
 }
@@ -398,6 +403,42 @@ func (s *SimpleScheduler) markShardStatus(shardID int64, status string) {
 	}
 }
 
+// markShardAssigned records assignment timestamp, worker name, and increments attempt count.
+// Also triggers markJobStarted on first shard assignment.
+func (s *SimpleScheduler) markShardAssigned(jobID, shardID int64, workerName string) {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	if _, err := s.db.ExecContext(ctx, `
+        UPDATE job_shards
+        SET status = 'running',
+            assigned_at = NOW(),
+            worker_name = $2,
+            attempt_count = attempt_count + 1,
+            updated_at = NOW()
+        WHERE id = $1
+    `, shardID, workerName); err != nil {
+		log.Printf("markShardAssigned(%d): %v", shardID, err)
+	}
+
+	// Mark job as started if this is the first shard assignment
+	s.markJobStarted(jobID)
+}
+
+// markJobStarted sets jobs.started_at if not already set.
+func (s *SimpleScheduler) markJobStarted(jobID int64) {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	if _, err := s.db.ExecContext(ctx, `
+        UPDATE jobs
+        SET started_at = NOW()
+        WHERE id = $1 AND started_at IS NULL
+    `, jobID); err != nil {
+		log.Printf("markJobStarted(%d): %v", jobID, err)
+	}
+}
+
 func parseAssignment(sval string) ([]int32, error) {
 	sval = strings.TrimSpace(sval)
 	if sval == "" {
@@ -446,7 +487,7 @@ func (s *SimpleScheduler) storeSatShardResult(jobID, shardID int64, assignment [
 
 	if _, err := tx.ExecContext(ctx, `
         UPDATE job_shards
-        SET status = 'completed', updated_at = NOW()
+        SET status = 'completed', completed_at = NOW(), updated_at = NOW()
         WHERE id = $1
     `, shardID); err != nil {
 		return fmt.Errorf("update job_shards: %w", err)
@@ -462,7 +503,7 @@ func (s *SimpleScheduler) storeSatShardResult(jobID, shardID int64, assignment [
 
 	if _, err := tx.ExecContext(ctx, `
         UPDATE jobs
-        SET status = 'completed'
+        SET status = 'completed', completed_at = NOW()
         WHERE id = $1
     `, jobID); err != nil {
 		return fmt.Errorf("update jobs: %w", err)
@@ -651,7 +692,7 @@ func (s *SimpleScheduler) VerifyUnsatShard(jobID, shardID, dratFileID, workerID 
 	// Mark the shard completed
 	if _, err := tx.ExecContext(ctx, `
         UPDATE job_shards
-        SET status = 'completed', updated_at = NOW()
+        SET status = 'completed', completed_at = NOW(), updated_at = NOW()
         WHERE id = $1
     `, shardID); err != nil {
 		return fmt.Errorf("VerifyUnsatShard: update job_shards: %w", err)
@@ -696,7 +737,7 @@ func (s *SimpleScheduler) VerifyUnsatShard(jobID, shardID, dratFileID, workerID 
 
 		_, err = tx.ExecContext(ctx, `
             UPDATE jobs
-            SET status = 'completed'
+            SET status = 'completed', completed_at = NOW()
             WHERE id = $1
         `, jobID)
 		if err != nil {

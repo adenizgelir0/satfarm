@@ -14,7 +14,9 @@ SATFARM is a distributed SAT-solving system. Clients upload CNF files, the serve
 ---
 
 ## Run the Server
+```bash
 docker compose up --build
+```
 
 Server endpoints:
 - HTTP: http://localhost:8080
@@ -23,11 +25,13 @@ Server endpoints:
 ---
 
 ## Run a Worker
+```bash
 go run ./cmd/worker \
   -addr localhost:50051 \
   -http http://localhost:8080 \
-  -token 23191ccdb291dc914483479e9d46259df20d4f50623dee3346eb4db09c740402 \
-  -name worker1
+  -name worker1 \
+  -token 23191ccdb291dc914483479e9d46259df20d4f50623dee3346eb4db09c740402
+```
 
 ---
 
@@ -36,6 +40,41 @@ go run ./cmd/worker \
 - Docker + Docker Compose
 - Kissat solver
 - drat-trim for UNSAT verification
+
+### Installing the Kissat and drat-trim (may be wrong)
+
+```bash
+docker compose up --build
+```
+2. Run the Worker (Inside WSL2)
+
+A. Install Build Tools
+```bash
+sudo apt update
+sudo apt install -y build-essential git
+```
+
+B. Compile Kissat
+```bash
+git clone https://github.com/arminbiere/kissat.git
+cd kissat
+./configure && make
+sudo cp build/kissat /usr/local/bin/
+```
+
+C. Compile drat-trim
+```bash
+git clone https://github.com/marijnheule/drat-trim.git
+cd drat-trim
+make
+sudo cp drat-trim /usr/local/bin/
+```
+
+D. Run the Worker Now kissat and drat-trim are in your path inside WSL.
+```bash
+# Navigate to your project
+go run ./cmd/worker -addr localhost:50051 -http http://localhost:8080 -name wsl-worker
+```
 
 ---
 

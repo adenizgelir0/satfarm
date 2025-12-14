@@ -62,7 +62,13 @@ CREATE TABLE IF NOT EXISTS jobs (
         status IN ('pending','running','completed','failed')
     ),
 
-    created_at TIMESTAMP NOT NULL DEFAULT NOW()
+    created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+
+    -- Benchmark timestamps: when job actually started running (first shard assigned)
+    started_at TIMESTAMP,
+
+    -- When job finished (SAT found or all shards UNSAT verified)
+    completed_at TIMESTAMP
 );
 
 CREATE TABLE IF NOT EXISTS job_shards (
@@ -79,7 +85,16 @@ CREATE TABLE IF NOT EXISTS job_shards (
     ),
 
     created_at TIMESTAMP NOT NULL DEFAULT NOW(),
-    updated_at TIMESTAMP NOT NULL DEFAULT NOW()
+    updated_at TIMESTAMP NOT NULL DEFAULT NOW(),
+
+    -- Benchmark timestamps
+    assigned_at TIMESTAMP,   -- when shard was sent to a worker
+    started_at TIMESTAMP,    -- when worker began solving (optional, set by worker)
+    completed_at TIMESTAMP,  -- when result was received and verified
+
+    -- Track which worker solved this shard (for fault tolerance analysis)
+    worker_name TEXT,
+    attempt_count INTEGER NOT NULL DEFAULT 0  -- how many times this shard was assigned (retries)
 );
 
 CREATE TABLE IF NOT EXISTS transactions (
