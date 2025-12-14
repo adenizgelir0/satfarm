@@ -19,9 +19,11 @@ import (
 )
 
 type Shard struct {
-	JobID    int64
-	ShardID  int64
-	CubeLits []int32
+	JobID            int64
+	ShardID          int64
+	CubeLits         []int32
+	AssignedWorkerID int64
+	AssignedUserID   int64
 }
 
 type JobScheduler interface {
@@ -29,7 +31,7 @@ type JobScheduler interface {
 	HandleJobResult(workerID int64, result *pb.JobResult) error
 	EnqueueJob(jobID int64, cnfPath string, maxWorkers int)
 
-	VerifyUnsatShard(jobID, shardID, dratFileID, workerID int64, dratPath string) error
+	VerifyUnsatShard(jobID, shardID, dratFileID, userID int64, dratPath string) error
 	ReenqueueShard(shardID int64) error
 	HandleDisconnect(workerID int64)
 }
@@ -217,8 +219,14 @@ func (s *SimpleScheduler) MaybeAssignWork(workerID int64) error {
 		return err
 	}
 
+	// Store worker info in shard for penalty lookups (even if worker disconnects)
+	sh.AssignedWorkerID = workerID
+	if conn.Info != nil {
+		sh.AssignedUserID = conn.Info.UserID
+	}
+
 	s.workerShard[workerID] = sh
-	log.Printf("assigned job=%d shard=%d to worker=%d", sh.JobID, sh.ShardID, workerID)
+	log.Printf("assigned job=%d shard=%d to worker=%d (user=%d)", sh.JobID, sh.ShardID, workerID, sh.AssignedUserID)
 
 	// Record benchmark timestamps
 	workerName := ""
@@ -231,13 +239,18 @@ func (s *SimpleScheduler) MaybeAssignWork(workerID int64) error {
 }
 
 func (s *SimpleScheduler) HandleJobResult(workerID int64, res *pb.JobResult) error {
-	// Mark worker as idle in memory
+	// Capture userID from cached shard BEFORE clearing (for penalties if worker disconnects)
 	s.mu.Lock()
+	cachedShard := s.workerShard[workerID]
+	var assignedUserID int64
+	if cachedShard != nil {
+		assignedUserID = cachedShard.AssignedUserID
+	}
 	s.workerShard[workerID] = nil
 	s.mu.Unlock()
 
-	log.Printf("Worker %d finished job=%d shard=%d sat=%v info=%q",
-		workerID, res.JobId, res.ShardId, res.Sat, res.ModelOrCoreInfo)
+	log.Printf("Worker %d (user=%d) finished job=%d shard=%d sat=%v info=%q",
+		workerID, assignedUserID, res.JobId, res.ShardId, res.Sat, res.ModelOrCoreInfo)
 
 	if res.Sat {
 		// ----------------------
@@ -250,7 +263,7 @@ func (s *SimpleScheduler) HandleJobResult(workerID int64, res *pb.JobResult) err
 			log.Printf("HandleJobResult: invalid SAT assignment from worker=%d: %v", workerID, err)
 
 			// Penalize for sending a malformed model and re-enqueue the shard.
-			s.penalizeWorker(workerID, res.JobId, res.ShardId, "invalid_sat_assignment_parse")
+			s.penalizeWorker(assignedUserID, res.JobId, res.ShardId, "invalid_sat_assignment_parse")
 			if reErr := s.ReenqueueShard(res.ShardId); reErr != nil {
 				log.Printf("HandleJobResult: failed to re-enqueue shard=%d: %v", res.ShardId, reErr)
 			}
@@ -281,7 +294,7 @@ func (s *SimpleScheduler) HandleJobResult(workerID int64, res *pb.JobResult) err
 				workerID, res.JobId, res.ShardId, err)
 
 			// Penalize for a model that does not satisfy CNF ∧ cube.
-			s.penalizeWorker(workerID, res.JobId, res.ShardId, "invalid_sat_assignment_unsatisfied")
+			s.penalizeWorker(assignedUserID, res.JobId, res.ShardId, "invalid_sat_assignment_unsatisfied")
 
 			// Re-enqueue shard so another worker can try it.
 			if reErr := s.ReenqueueShard(res.ShardId); reErr != nil {
@@ -318,7 +331,7 @@ func (s *SimpleScheduler) HandleJobResult(workerID int64, res *pb.JobResult) err
 			res.JobId, res.ShardId, workerID)
 
 		// Penalize for claiming UNSAT without providing a proof.
-		s.penalizeWorker(workerID, res.JobId, res.ShardId, "unsat_missing_drat_id")
+		s.penalizeWorker(assignedUserID, res.JobId, res.ShardId, "unsat_missing_drat_id")
 
 		// Re-enqueue shard so another worker can handle it properly.
 		if reErr := s.ReenqueueShard(res.ShardId); reErr != nil {
@@ -333,7 +346,7 @@ func (s *SimpleScheduler) HandleJobResult(workerID int64, res *pb.JobResult) err
 			dratIDStr, res.JobId, res.ShardId, workerID, err)
 
 		// Penalize for sending a non-integer proof ID.
-		s.penalizeWorker(workerID, res.JobId, res.ShardId, "unsat_invalid_drat_id")
+		s.penalizeWorker(assignedUserID, res.JobId, res.ShardId, "unsat_invalid_drat_id")
 
 		if reErr := s.ReenqueueShard(res.ShardId); reErr != nil {
 			log.Printf("HandleJobResult: failed to re-enqueue shard=%d: %v", res.ShardId, reErr)
@@ -356,7 +369,7 @@ func (s *SimpleScheduler) HandleJobResult(workerID int64, res *pb.JobResult) err
 				dratID, res.JobId, res.ShardId, workerID)
 
 			// Penalize for referencing a non-existent proof.
-			s.penalizeWorker(workerID, res.JobId, res.ShardId, "unsat_drat_file_not_found")
+			s.penalizeWorker(assignedUserID, res.JobId, res.ShardId, "unsat_drat_file_not_found")
 
 			if reErr := s.ReenqueueShard(res.ShardId); reErr != nil {
 				log.Printf("HandleJobResult: failed to re-enqueue shard=%d: %v", res.ShardId, reErr)
@@ -376,7 +389,7 @@ func (s *SimpleScheduler) HandleJobResult(workerID int64, res *pb.JobResult) err
 	//   - runs drat-trim
 	//   - updates shard_results / job_shards / job_results / jobs
 	//   - penalizes & re-enqueues on invalid proof
-	if err := s.VerifyUnsatShard(res.JobId, res.ShardId, dratID, workerID, dratPath); err != nil {
+	if err := s.VerifyUnsatShard(res.JobId, res.ShardId, dratID, assignedUserID, dratPath); err != nil {
 		log.Printf("HandleJobResult: VerifyUnsatShard failed (job=%d shard=%d worker=%d): %v",
 			res.JobId, res.ShardId, workerID, err)
 		return nil
@@ -610,7 +623,7 @@ func (s *SimpleScheduler) ReenqueueShard(shardID int64) error {
 	return nil
 }
 
-func (s *SimpleScheduler) VerifyUnsatShard(jobID, shardID, dratFileID, workerID int64, dratPath string) error {
+func (s *SimpleScheduler) VerifyUnsatShard(jobID, shardID, dratFileID, userID int64, dratPath string) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
 	defer cancel()
 
@@ -650,10 +663,11 @@ func (s *SimpleScheduler) VerifyUnsatShard(jobID, shardID, dratFileID, workerID 
 	// --- 3. Verify DRAT proof with drat-trim against the exact same CNF --------------
 
 	if err := sat.VerifyDratProof(solveCNF, dratPath); err != nil {
-		log.Printf("VerifyUnsatShard: INVALID proof for job=%d shard=%d (worker=%d): %v",
-			jobID, shardID, workerID, err)
+		log.Printf("VerifyUnsatShard: INVALID proof for job=%d shard=%d (user=%d): %v",
+			jobID, shardID, userID, err)
 
-		// TODO: Add worker penalty logic here.
+		// Penalize for invalid DRAT proof
+		s.penalizeWorker(userID, jobID, shardID, "invalid_drat_proof")
 
 		// Re-enqueue shard so another worker can retry it
 		if reErr := s.ReenqueueShard(shardID); reErr != nil {

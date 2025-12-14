@@ -1,0 +1,61 @@
+# ---------- Stage 1: Build SATFARM testworker (Go auto-fetches correct version) ----------
+FROM golang:1.23-bookworm AS builder
+
+WORKDIR /app
+
+# Let Go auto-fetch the toolchain required by go.mod (>= 1.25.3)
+ENV GOTOOLCHAIN=auto
+
+COPY go.mod go.sum ./
+RUN go mod download
+
+COPY . .
+
+RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 \
+    go build -o /testworker ./cmd/testworker
+
+
+# ---------- Stage 2: Build Kissat like the AUR PKGBUILD (as root, no tests) ----------
+FROM debian:bookworm-slim AS kissat-builder
+
+WORKDIR /build/kissat
+
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+        ca-certificates \
+        curl \
+        build-essential \
+    && rm -rf /var/lib/apt/lists/*
+
+# Same source URL as PKGBUILD:
+# kissat-4.0.4.tar.gz::https://github.com/arminbiere/kissat/archive/refs/tags/rel-4.0.4.tar.gz
+RUN curl -L "https://github.com/arminbiere/kissat/archive/refs/tags/rel-4.0.4.tar.gz" \
+    | tar xz --strip-components=1
+
+# Same configure flags as PKGBUILD:
+#   ./configure -shared --kitten
+RUN ./configure -shared --kitten && \
+    make -j"$(nproc)"
+
+# NOTE: We intentionally skip `make test` here. The test harness assumes a
+# non-root environment and pokes at /etc/shadow, /etc/passwd, which is
+# awkward in Docker. For the worker image, having a correct build is enough.
+
+
+# ---------- Stage 3: Minimal runtime image ----------
+FROM debian:bookworm-slim
+
+WORKDIR /app
+
+# Debian slim already has glibc, which is the only runtime dep in PKGBUILD.
+
+# Install kissat & kitten binaries like package() does
+COPY --from=kissat-builder /build/kissat/build/kissat /usr/bin/kissat
+COPY --from=kissat-builder /build/kissat/build/kitten /usr/bin/kitten
+
+# Install testworker binary
+COPY --from=builder /testworker /usr/local/bin/testworker
+
+RUN chmod +x /usr/bin/kissat /usr/bin/kitten /usr/local/bin/testworker
+
+ENTRYPOINT ["testworker"]

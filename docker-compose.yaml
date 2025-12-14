@@ -1,4 +1,3 @@
-version: "3.9"
 
 services:
   db:
@@ -30,6 +29,24 @@ services:
       - "8080:8080"  # web
       - "50051:50051"  # grpc
     restart: on-failure
+
+  # Worker images (build with: docker compose --profile tools build)
+  # Run separately with: docker run --rm --network host satfarm-worker ...
+  worker:
+    build:
+      context: .
+      dockerfile: Dockerfile.worker
+    image: satfarm-worker
+    profiles:
+      - tools
+
+  testworker:
+    build:
+      context: .
+      dockerfile: Dockerfile.testworker
+    image: satfarm-testworker
+    profiles:
+      - tools  # Won't start with 'docker compose up', only builds
 
 volumes:
   db_data: {}

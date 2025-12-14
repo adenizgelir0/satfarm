@@ -114,40 +114,44 @@ If you prefer to use "localhost" as the server address:
 
 This method only works on Linux and should not be used by third-party workers.
 
-#### Installing the Kissat and drat-trim locally without Docker
+## Run Evaluation Scripts
 
-```bash
-docker compose up --build
-```
-2. Run the Worker (Inside WSL2)
+Build worker images first:
 
-A. Install Build Tools
-```bash
-sudo apt update
-sudo apt install -y build-essential git
-```
+    docker compose --profile tools build
 
-B. Compile Kissat
-```bash
-git clone https://github.com/arminbiere/kissat.git
-cd kissat
-./configure && make
-sudo cp build/kissat /usr/local/bin/
-```
+Then run the demo scripts on the server:
 
-C. Compile drat-trim
-```bash
-git clone https://github.com/marijnheule/drat-trim.git
-cd drat-trim
-make
-sudo cp drat-trim /usr/local/bin/
-```
+    docker compose up -d           # Start server for workers
 
-D. Run the Worker Now kissat and drat-trim are in your path inside WSL.
-```bash
-# Navigate to your project
-go run ./cmd/worker -addr localhost:50051 -http http://localhost:8080 -name wsl-worker
-```
+    ./scripts/demo_crash.sh        # Worker crash recovery
+    ./scripts/demo_invalid.sh      # Invalid result rejection
+    ./scripts/benchmark_speedup.sh # Performance benchmark
+
+## Installing Kissat and drat-trim Locally (without Docker)
+
+Install build tools:
+
+    sudo apt update
+    sudo apt install -y build-essential git
+
+Compile Kissat:
+
+    git clone https://github.com/arminbiere/kissat.git
+    cd kissat
+    ./configure && make
+    sudo cp build/kissat /usr/local/bin/
+
+Compile drat-trim:
+
+    git clone https://github.com/marijnheule/drat-trim.git
+    cd drat-trim
+    make
+    sudo cp drat-trim /usr/local/bin/
+
+Run the worker locally:
+
+    go run ./cmd/worker -addr localhost:50051 -http http://localhost:8080 -name local-worker
 
 ---
 

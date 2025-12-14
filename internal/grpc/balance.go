@@ -257,12 +257,11 @@ func (s *SimpleScheduler) transferUserBalance(
 //  PENALTIES
 // ===========================
 
-// penalizeWorker attempts to charge workerPenaltySatc from the worker's owner.
+// penalizeWorker attempts to charge workerPenaltySatc from a user.
 // If balance is insufficient, nothing happens (just a log line).
-func (s *SimpleScheduler) penalizeWorker(workerID, jobID, shardID int64, why string) {
-	userID, err := s.getWorkerUserID(workerID)
-	if err != nil {
-		log.Printf("penalizeWorker: %v", err)
+func (s *SimpleScheduler) penalizeWorker(userID, jobID, shardID int64, why string) {
+	if userID == 0 {
+		log.Printf("penalizeWorker: userID=0, cannot penalize for job=%d shard=%d (%s)", jobID, shardID, why)
 		return
 	}
 
@@ -276,7 +275,7 @@ func (s *SimpleScheduler) penalizeWorker(workerID, jobID, shardID int64, why str
 		"reason":   why,
 	}
 
-	err = s.changeUserBalance(ctx, userID, -workerPenaltySatc, "worker_penalty", meta)
+	err := s.changeUserBalance(ctx, userID, -workerPenaltySatc, "worker_penalty", meta)
 	if err != nil {
 		if strings.Contains(err.Error(), "insufficient balance") {
 			log.Printf("penalizeWorker: user=%d insufficient balance for penalty=%d",
