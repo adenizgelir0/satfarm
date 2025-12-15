@@ -48,5 +48,6 @@ func NewRouter(s *Server) http.Handler {
 
 	r.Post("/worker/drat", s.HandleWorkerDratUpload)
 	r.Get("/worker/cnf/{jobID}", s.HandleWorkerCnfDownload)
+	r.Get("/api/job/{jobID}", s.HandleJobDetailJSON)
 	return r
 }
